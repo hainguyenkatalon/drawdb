@@ -34,7 +34,12 @@ import { IconAlertTriangle } from "@douyinfe/semi-icons";
 import { useTranslation } from "react-i18next";
 import { databases } from "../data/databases";
 import { isRtl } from "../i18n/utils/rtl";
-import { useMatch, useParams, useSearchParams } from "react-router-dom";
+import {
+  useMatch,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { get, SHARE_FILENAME } from "../api/gists";
 import { mergeCustomTypes } from "../utils/customTypes";
 
@@ -102,6 +107,7 @@ export default function WorkSpace({ forcedDiagramId } = {}) {
   const isTemplate = useMatch("/editor/templates/:id");
 
   const navigate = useNavigateWithParams();
+  const navigateToCopy = useNavigate();
   const extensionValues = useContext(ExtensionsContext);
   const extensions = useMemo(() => extensionValues ?? {}, [extensionValues]);
   const cloudOnly = typeof extensions.cloudSave === "function";
@@ -141,6 +147,33 @@ export default function WorkSpace({ forcedDiagramId } = {}) {
       types,
     ],
   );
+
+  const saveAs = async (name) => {
+    const diagramId = uuidv4();
+    const copy = {
+      ...buildCloudPayload(diagramId),
+      name,
+      gistId: "",
+      loadedFromGistId: "",
+    };
+
+    // Keep the current title/identity until the independent copy is persisted.
+    // Changing the title first would let autosave rename the original record.
+    if (cloudOnly && diagramSource !== "local") {
+      await extensions.cloudSave(copy, { isNew: true });
+    } else {
+      await db.diagrams.add(copy);
+    }
+
+    const params = new URLSearchParams(searchParams);
+    params.delete("shareId");
+    setSaveState(State.SAVED);
+    setLastSaved(new Date().toLocaleString());
+    navigateToCopy(
+      { pathname: `/editor/diagrams/${diagramId}`, search: params.toString() },
+      { replace: true },
+    );
+  };
 
   const save = useCallback(async () => {
     if (searchParams.has("shareId")) {
@@ -510,6 +543,7 @@ export default function WorkSpace({ forcedDiagramId } = {}) {
         <ControlPanel
           title={title}
           setTitle={setTitle}
+          onSaveAs={saveAs}
           lastSaved={lastSaved}
           setLastSaved={setLastSaved}
           toolbarContainer={toolbarContainer}
