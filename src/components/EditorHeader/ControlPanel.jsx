@@ -92,6 +92,7 @@ import ConfigureCustomTypes from "./ConfigureCustomTypes";
 export default function ControlPanel({
   title,
   setTitle,
+  onSaveAs,
   lastSaved,
   setLastSaved,
   toolbarContainer,
@@ -1730,6 +1731,7 @@ export default function ControlPanel({
         setExportData={setExportData}
         title={title}
         setTitle={setTitle}
+        onSaveAs={onSaveAs}
         setModal={setModal}
         importFrom={importFrom}
         importDb={importDb}
