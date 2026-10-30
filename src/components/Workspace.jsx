@@ -264,6 +264,34 @@ export default function WorkSpace({ forcedDiagramId } = {}) {
     }
   }, [extensions, loadedDiagramId, buildCloudPayload, setSaveState]);
 
+  const saveAs = async (name) => {
+    const diagramId = uuidv4();
+    const copy = {
+      ...buildCloudPayload(diagramId),
+      name,
+      gistId: "",
+      loadedFromGistId: "",
+    };
+    try {
+      if (cloudOnly && diagramSource !== "local") {
+        await extensions.cloudSave(copy, { isNew: true });
+      } else {
+        await db.diagrams.add(copy);
+      }
+      setGistId("");
+      setLoadedFromGistId("");
+      setTitle(name);
+      setSaveState(State.SAVED);
+      setLastSaved(new Date().toLocaleString());
+      navigate(`/editor/diagrams/${diagramId}`, { replace: true });
+      return true;
+    } catch (err) {
+      console.warn("save as failed:", err);
+      setSaveState(State.ERROR);
+      return false;
+    }
+  };
+
   const dismissMoveToCloud = () => {
     if (!loadedDiagramId) return;
     setDismissedMoveIds((prev) => {
@@ -510,6 +538,7 @@ export default function WorkSpace({ forcedDiagramId } = {}) {
         <ControlPanel
           title={title}
           setTitle={setTitle}
+          saveAs={saveAs}
           lastSaved={lastSaved}
           setLastSaved={setLastSaved}
           toolbarContainer={toolbarContainer}
