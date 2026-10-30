@@ -2,7 +2,7 @@ import { Image, Input, Modal as SemiUIModal, Spin } from "@douyinfe/semi-ui";
 import { saveAs } from "file-saver";
 import { Parser } from "node-sql-parser";
 import { Parser as OracleParser } from "oracle-sql-parser";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DB, MODAL, STATUS } from "../../../data/constants";
 import { databases } from "../../../data/databases";
@@ -47,6 +47,7 @@ export default function Modal({
   setModal,
   title,
   setTitle,
+  saveAs: saveDiagramAs,
   exportData,
   setExportData,
   importDb,
@@ -78,7 +79,12 @@ export default function Modal({
   const [selectedTemplateId, setSelectedTemplateId] = useState(-1);
   const [selectedDiagramId, setSelectedDiagramId] = useState(0);
   const [saveAsTitle, setSaveAsTitle] = useState(title);
+  const [savingCopy, setSavingCopy] = useState(false);
   const navigate = useNavigateWithParams();
+
+  useEffect(() => {
+    if (modal === MODAL.SAVEAS) setSaveAsTitle(title);
+  }, [modal, title]);
 
   const overwriteDiagram = () => {
     setTables(importData.tables);
@@ -203,8 +209,10 @@ export default function Modal({
         setModal(MODAL.NONE);
         return;
       case MODAL.SAVEAS:
-        setTitle(saveAsTitle);
-        setModal(MODAL.NONE);
+        if (savingCopy) return;
+        setSavingCopy(true);
+        if (await saveDiagramAs(saveAsTitle.trim())) setModal(MODAL.NONE);
+        setSavingCopy(false);
         return;
       case MODAL.NEW:
         window.open("/editor/templates/" + selectedTemplateId, "_blank");
@@ -364,7 +372,7 @@ export default function Modal({
             (error.type === STATUS.ERROR || !importData)) ||
           (modal === MODAL.RENAME && title === "") ||
           ((modal === MODAL.IMG || modal === MODAL.CODE) && !exportData.data) ||
-          (modal === MODAL.SAVEAS && saveAsTitle === "") ||
+          (modal === MODAL.SAVEAS && (!saveAsTitle.trim() || savingCopy)) ||
           (modal === MODAL.IMPORT_SRC && importSource.src === ""),
         hidden: modal === MODAL.SHARE,
       }}
